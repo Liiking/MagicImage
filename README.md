@@ -1,2 +1,2 @@
 # MagicImage
-Picture processing tool,realize ID card identification based on Tencent YouTu.
+Picture process tool,realize ID card identification based on Tencent YouTu.
