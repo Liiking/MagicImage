@@ -3,17 +3,11 @@ package com.qwy.magic.magicimage;
 import android.Manifest;
 import android.content.ClipData;
 import android.content.ClipboardManager;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Color;
-import android.graphics.Matrix;
-import android.net.Uri;
-import android.os.Environment;
-import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -25,18 +19,13 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.google.gson.Gson;
+import com.lzy.imagepicker.ImagePicker;
+import com.lzy.imagepicker.bean.ImageItem;
+import com.lzy.imagepicker.ui.ImageGridActivity;
 import com.qwy.magic.magicimage.entity.IdentifyResult;
 import com.qwy.magic.magicimage.util.BitMapUtils;
 import com.qwy.magic.magicimage.util.TecentHttpUtil;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.List;
-import me.nereo.multi_image_selector.MultiImageSelector;
-import me.nereo.multi_image_selector.MultiImageSelectorActivity;
+import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private ImageView imageView, iv_after;
@@ -110,30 +99,23 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     /**
      * select picture
      */
-    private void selectImage(){
-        MultiImageSelector.create(MainActivity.this)
-                .showCamera(true) // 是否显示相机. 默认为显示
-//                .count(1) // 最大选择图片数量, 默认为9. 只有在选择模式为多选时有效
-                .single() // 单选模式
-//                .multi() // 多选模式, 默认模式;
-//                .origin(ArrayList<String>) // 默认已选择图片. 只有在选择模式为多选时有效
-                .start(MainActivity.this, REQUEST_IMAGE);
+    private void selectImage() {
+        Intent intent = new Intent(this, ImageGridActivity.class);
+//        intent.putExtra(ImageGridActivity.EXTRAS_TAKE_PICKERS,true); // 是否是直接打开相机
+        startActivityForResult(intent, REQUEST_IMAGE);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if(requestCode == REQUEST_IMAGE){
-            if(resultCode == RESULT_OK){
-                // 获取返回的图片列表
-                List<String> path = data.getStringArrayListExtra(MultiImageSelectorActivity.EXTRA_RESULT);
-                // 处理你自己的逻辑 ....
-                if(path != null && path.size() > 0){
-                    p = path.get(0);
-//                    onSelected();
-                    bitmap = BitMapUtils.getImage(p);
-                    imageView.setImageBitmap(bitmap);
-                }
+        if (requestCode == REQUEST_IMAGE) {
+            if (data != null && resultCode == ImagePicker.RESULT_CODE_ITEMS) {
+                ArrayList<ImageItem> images = (ArrayList<ImageItem>) data.getSerializableExtra(ImagePicker.EXTRA_RESULT_ITEMS);
+                p = images.get(0).path;
+                bitmap = BitMapUtils.getImage(p);
+                imageView.setImageBitmap(bitmap);
+            } else {
+                Toast.makeText(this, "没有数据", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -150,10 +132,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 iv_after.setImageBitmap(copy);
                 break;
             case R.id.image:
-                if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED ||
+                        ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                     // 应用没有读取手机外部存储的权限
                     // 申请WRITE_EXTERNAL_STORAGE权限
-                    ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                    ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA},
                             100);
                 }else {
                     selectImage();
@@ -264,7 +247,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if(requestCode == 100){
-            if(grantResults[0] ==  PackageManager.PERMISSION_GRANTED){
+            if(grantResults[0] ==  PackageManager.PERMISSION_GRANTED && grantResults[1] ==  PackageManager.PERMISSION_GRANTED){
                 // 申请到权限
                 selectImage();
             }else {
